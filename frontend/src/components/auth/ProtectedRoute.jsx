@@ -14,7 +14,21 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     toast.error('You do not have permission to access this page');
-    const redirectPath = user?.role ? `/${user.role}/dashboard` : '/';
+    // Determine the correct dashboard path based on user role
+    let redirectPath;
+    switch (user?.role) {
+      case 'admin':
+        redirectPath = '/dashboard/admin';
+        break;
+      case 'morgueAttendant':
+        redirectPath = '/dashboard/morgue';
+        break;
+      case 'client':
+        redirectPath = '/dashboard/client';
+        break;
+      default:
+        redirectPath = '/';
+    }
     return <Navigate to={redirectPath} replace />;
   }
 

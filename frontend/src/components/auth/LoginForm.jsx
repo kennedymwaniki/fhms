@@ -41,13 +41,13 @@ export default function LoginForm() {
       // Redirect based on user role
       switch (user.role) {
         case 'admin':
-          navigate('/admin/dashboard');
+          navigate('/dashboard/admin');
           break;
-        case 'morgue':
-          navigate('/morgue/dashboard');
+        case 'morgueAttendant':
+          navigate('/dashboard/morgue');
           break;
         default:
-          navigate('/client/dashboard');
+          navigate('/dashboard/client');
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed. Please try again.');

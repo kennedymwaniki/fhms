@@ -12,8 +12,15 @@ const api = axios.create({
 // Request interceptor for API calls
 api.interceptors.request.use(
   (config) => {
+    // First try to get token from Redux store
     const state = store.getState();
-    const token = state.auth.token;
+    let token = state.auth.token;
+    
+    // If not in store, try localStorage
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,6 +36,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
+      // Clear token from localStorage
+      localStorage.removeItem('token');
+      // Dispatch logout action
       store.dispatch(logout());
     }
     return Promise.reject(error);

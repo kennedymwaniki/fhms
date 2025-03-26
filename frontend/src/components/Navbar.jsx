@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isLandingPage = location.pathname === '/';
 
   const navigation = [
@@ -16,6 +17,23 @@ export default function Navbar() {
     { name: 'Resources', href: '/#resources' },
     { name: 'Contact', href: '/#contact' },
   ];
+
+  const getDashboardPath = () => {
+    switch (user?.role) {
+      case 'admin':
+        return '/dashboard/admin';
+      case 'morgueAttendant':
+        return '/dashboard/morgue';
+      default:
+        return '/dashboard/client';
+    }
+  };
+
+  const handleDashboardClick = (e) => {
+    e.preventDefault();
+    const path = getDashboardPath();
+    navigate(path);
+  };
 
   return (
     <nav className={`fixed w-full z-50 ${isLandingPage ? 'bg-transparent' : 'bg-white shadow-md'}`}>
@@ -45,12 +63,16 @@ export default function Navbar() {
               {isAuthenticated ? (
                 <div className="relative ml-3">
                   <div className="flex items-center space-x-4">
-                    <Link
-                      to={`/dashboard/${user?.role}`}
-                      className={`${isLandingPage ? 'text-white' : 'text-primary-600'} hover:text-primary-800 px-3 py-2 rounded-md text-sm font-medium`}
+                    <button
+                      onClick={handleDashboardClick}
+                      className={`${
+                        isLandingPage
+                          ? 'text-white hover:text-primary-200'
+                          : 'text-primary-600 hover:text-primary-800'
+                      } px-3 py-2 rounded-md text-sm font-medium`}
                     >
                       Dashboard
-                    </Link>
+                    </button>
                     <button
                       onClick={logout}
                       className={`${
@@ -125,13 +147,15 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
-              <Link
-                to={`/dashboard/${user?.role}`}
-                className="text-primary-600 hover:bg-primary-600 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-                onClick={() => setIsOpen(false)}
+              <button
+                onClick={(e) => {
+                  handleDashboardClick(e);
+                  setIsOpen(false);
+                }}
+                className="w-full text-left text-primary-600 hover:bg-primary-600 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
               >
                 Dashboard
-              </Link>
+              </button>
               <button
                 onClick={() => {
                   logout();
