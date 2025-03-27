@@ -6,6 +6,7 @@ import { useBookings } from '../../hooks/useBookings';
 import DashboardHeader from '../../components/DashboardHeader';
 import DashboardOverview from './DashboardOverview';
 import MyBookings from './MyBookings';
+import BookingDetails from './BookingDetails';
 import Documents from './Documents';
 import Payments from './Payments';
 import BookService from './BookService';
@@ -156,6 +157,7 @@ export default function ClientDashboard() {
       <Routes>
         <Route index element={<DashboardOverview />} />
         <Route path="bookings" element={<MyBookings />} />
+        <Route path="bookings/:id" element={<BookingDetails />} />
         <Route path="book-service" element={<BookService />} />
         <Route path="documents" element={<Documents />} />
         <Route path="payments" element={<Payments />} />

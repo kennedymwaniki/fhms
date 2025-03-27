@@ -121,17 +121,19 @@ function initDb() {
   // Create Documents table
   db.run(`CREATE TABLE IF NOT EXISTS documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    deceased_id INTEGER,
-    booking_id INTEGER,
     name TEXT NOT NULL,
     file_path TEXT NOT NULL,
-    document_type TEXT CHECK(document_type IN ('death_certificate', 'burial_permit', 'contract', 'invoice', 'receipt', 'other')),
-    uploaded_by INTEGER,
+    document_type TEXT NOT NULL CHECK(document_type IN ('death_certificate', 'burial_permit', 'contract', 'invoice', 'receipt', 'other')),
+    description TEXT,
+    deceased_id INTEGER,
+    booking_id INTEGER,
+    uploaded_by INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'verified', 'rejected')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (deceased_id) REFERENCES deceased(id) ON DELETE SET NULL,
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
-    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
   // Create Feedback table
