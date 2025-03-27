@@ -78,6 +78,44 @@ router.get('/',
   }
 );
 
+// Get my bookings (client)
+router.get('/my', authenticateToken, async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        b.*,
+        d.first_name as deceased_first_name,
+        d.last_name as deceased_last_name,
+        GROUP_CONCAT(s.name) as service_names
+      FROM bookings b
+      LEFT JOIN deceased d ON b.deceased_id = d.id
+      LEFT JOIN booking_services bs ON b.id = bs.booking_id
+      LEFT JOIN services s ON bs.service_id = s.id
+      WHERE b.user_id = ?
+      GROUP BY b.id
+      ORDER BY b.created_at DESC
+    `;
+
+    const bookings = await db.all(query, [req.user.id]);
+
+    // Fetch services for each booking
+    for (let booking of bookings) {
+      const services = await db.all(`
+        SELECT bs.*, s.name as service_name, s.price as service_price
+        FROM booking_services bs
+        JOIN services s ON bs.service_id = s.id
+        WHERE bs.booking_id = ?
+      `, [booking.id]);
+      
+      booking.services = services;
+    }
+
+    res.json({ bookings });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get booking by ID
 router.get('/:id',
   authenticateToken,

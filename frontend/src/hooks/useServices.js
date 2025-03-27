@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
-import { servicesService } from '../api/services/services.service';
+import servicesService from '../api/services/services.service';
 import {
   fetchServicesStart,
   fetchServicesSuccess,
@@ -21,7 +21,7 @@ export const useServices = () => {
   const fetchServices = async () => {
     try {
       dispatch(fetchServicesStart());
-      const data = await servicesService.getAllServices();
+      const data = await servicesService.getAvailableServices();
       dispatch(fetchServicesSuccess(data));
     } catch (error) {
       dispatch(fetchServicesFailure(error.response?.data?.message));
@@ -31,7 +31,7 @@ export const useServices = () => {
 
   const getServiceById = async (id) => {
     try {
-      const service = await servicesService.getServiceById(id);
+      const service = await servicesService.getServiceDetails(id);
       dispatch(setSelectedService(service));
       return service;
     } catch (error) {

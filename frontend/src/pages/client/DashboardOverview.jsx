@@ -10,12 +10,58 @@ export default function DashboardOverview() {
   const { getClientBookings } = useBookings();
   const [recentBookings, setRecentBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState([
+    {
+      title: 'Active Bookings',
+      value: 0,
+      icon: Calendar,
+      color: 'bg-blue-100 text-blue-600',
+    },
+    {
+      title: 'Completed Services',
+      value: 0,
+      icon: Package,
+      color: 'bg-green-100 text-green-600',
+    },
+    {
+      title: 'Pending Documents',
+      value: 0,
+      icon: FileText,
+      color: 'bg-yellow-100 text-yellow-600',
+    },
+    {
+      title: 'Notifications',
+      value: 0,
+      icon: AlertCircle,
+      color: 'bg-purple-100 text-purple-600',
+    }
+  ]);
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
         const bookings = await getClientBookings();
-        setRecentBookings(bookings.slice(0, 5));
+        setRecentBookings(bookings);
+        
+        // Update stats with actual data
+        setStats(prevStats => [
+          {
+            ...prevStats[0],
+            value: bookings.filter(b => b.status === 'active' || b.status === 'pending').length
+          },
+          {
+            ...prevStats[1],
+            value: bookings.filter(b => b.status === 'completed').length
+          },
+          {
+            ...prevStats[2],
+            value: bookings.filter(b => b.required_documents && b.required_documents.length > 0).length
+          },
+          {
+            ...prevStats[3],
+            value: bookings.filter(b => b.has_notifications).length
+          }
+        ]);
       } catch (error) {
         console.error('Failed to fetch bookings:', error);
       } finally {
@@ -25,33 +71,6 @@ export default function DashboardOverview() {
 
     fetchBookings();
   }, [getClientBookings]);
-
-  const stats = [
-    {
-      title: 'Active Bookings',
-      value: recentBookings.filter(b => b.status === 'active').length,
-      icon: Calendar,
-      color: 'bg-blue-100 text-blue-600',
-    },
-    {
-      title: 'Completed Services',
-      value: recentBookings.filter(b => b.status === 'completed').length,
-      icon: Package,
-      color: 'bg-green-100 text-green-600',
-    },
-    {
-      title: 'Pending Documents',
-      value: 2,
-      icon: FileText,
-      color: 'bg-yellow-100 text-yellow-600',
-    },
-    {
-      title: 'Notifications',
-      value: 3,
-      icon: AlertCircle,
-      color: 'bg-purple-100 text-purple-600',
-    },
-  ];
 
   const headerActions = (
     <Link
@@ -99,14 +118,23 @@ export default function DashboardOverview() {
             {isLoading ? (
               <div className="p-6 text-center text-gray-500">Loading...</div>
             ) : recentBookings.length > 0 ? (
-              recentBookings.map((booking) => (
+              recentBookings.slice(0, 5).map((booking) => (
                 <div key={booking.id} className="p-6 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="font-medium text-gray-900">{booking.serviceName}</p>
+                      <p className="font-medium text-gray-900">
+                        Booking #{booking.id} - {booking.deceased_first_name} {booking.deceased_last_name}
+                      </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(booking.date).toLocaleDateString()}
+                        {booking.services?.map(service => service.service_name).join(', ')}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(booking.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
                       </p>
                     </div>
                   </div>
