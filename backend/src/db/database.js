@@ -177,6 +177,21 @@ function initDb() {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
+  // Create Payments table
+  db.run(`CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    payment_method TEXT CHECK(payment_method IN ('mpesa', 'card', 'bank_transfer')),
+    transaction_id TEXT,
+    mpesa_phone TEXT,
+    status TEXT CHECK(status IN ('pending', 'processing', 'completed', 'failed')) DEFAULT 'pending',
+    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+  )`);
+
   console.log('Database tables initialized');
 }
 

@@ -68,8 +68,17 @@ export default function MyBookings() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader pageTitle="My Bookings" />
-      
+      <DashboardHeader 
+        pageTitle="My Bookings"
+        actions={
+          <button
+            onClick={() => navigate('/dashboard/client/book-service')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+          >
+            Book New Service
+          </button>
+        }
+      />
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {bookings.length === 0 ? (
           <div className="text-center py-12">

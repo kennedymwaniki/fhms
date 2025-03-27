@@ -14,6 +14,7 @@ const bookingRoutes = require('./src/routes/booking.routes');
 const deceasedRoutes = require('./src/routes/deceased.routes');
 const documentRoutes = require('./src/routes/document.routes');
 const feedbackRoutes = require('./src/routes/feedback.routes');
+const paymentRoutes = require('./src/routes/payment.routes');
 
 // Initialize database
 const db = require('./src/db/database');
@@ -51,6 +52,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/deceased', deceasedRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Default route
 app.get('/', (req, res) => {
