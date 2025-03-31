@@ -1,6 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
+const { logBookingActivity } = require('../utils/activityLogger');
 const db = require('../db/database');
 
 const router = express.Router();
@@ -204,6 +205,9 @@ router.post('/',
         [result.id]
       );
 
+      // Log booking creation
+      await logBookingActivity('created', newBooking.id, req.user.id, `New booking created for deceased ID: ${deceased_id}`);
+
       res.status(201).json({
         message: 'Booking created successfully',
         booking: newBooking
@@ -235,6 +239,15 @@ router.patch('/:id/status',
           'SELECT * FROM bookings WHERE id = ?',
           [req.params.id]
         );
+        
+        // Log booking status update
+        await logBookingActivity(
+          'status_updated', 
+          updatedBooking.id, 
+          req.user.id, 
+          `Booking status updated to: ${req.body.status}`
+        );
+
         res.json({
           message: 'Booking status updated successfully',
           booking: updatedBooking
@@ -269,6 +282,15 @@ router.patch('/:id/payment',
           'SELECT * FROM bookings WHERE id = ?',
           [req.params.id]
         );
+
+        // Log payment status update
+        await logBookingActivity(
+          'payment_status_updated', 
+          updatedBooking.id, 
+          req.user.id, 
+          `Payment status updated to: ${req.body.payment_status}`
+        );
+
         res.json({
           message: 'Payment status updated successfully',
           booking: updatedBooking

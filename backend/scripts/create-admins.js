@@ -19,6 +19,14 @@ async function createAdminUsers() {
                 role: 'admin',
                 phone: '',
                 address: ''
+            },
+            {
+                name: 'Lonny Admin',
+                email: 'lonny@gmail.com',
+                password: '123456789',
+                role: 'admin',
+                phone: '',
+                address: ''
             }
         ];
 
