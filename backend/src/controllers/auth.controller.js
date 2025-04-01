@@ -2,6 +2,10 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/user.model');
 
+// Fallback values for JWT in case environment variables are not loaded
+const JWT_SECRET = process.env.JWT_SECRET || 'fhms_super_secret_key_replace_in_production';
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '24h';
+
 // Register a new user
 async function register(req, res) {
   try {
@@ -72,8 +76,8 @@ async function login(req, res) {
         email: user.email,
         role: user.role 
       },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRATION }
     );
 
     // Return user info and token
