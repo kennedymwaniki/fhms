@@ -20,33 +20,65 @@ router.get('/admin/statistics',
   authorizeRoles('admin'),
   async (req, res) => {
     try {
-      // Get total users count (excluding admin)
+      console.log('Fetching total users count');
       const { count: totalUsers } = await db.get(
         "SELECT COUNT(*) as count FROM users WHERE role != 'admin'"
       );
-      
-      // Get active bookings count
+      console.log('Total users count:', totalUsers);
+    } catch (error) {
+      console.error('Error fetching total users count:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching active bookings count');
       const { count: activeBookings } = await db.get(
         "SELECT COUNT(*) as count FROM bookings WHERE status IN ('pending', 'confirmed', 'in_progress')"
       );
+      console.log('Active bookings count:', activeBookings);
+    } catch (error) {
+      console.error('Error fetching active bookings count:', error.message);
+      throw error;
+    }
 
-      // Get monthly revenue from completed/paid bookings
+    try {
+      console.log('Fetching monthly revenue');
       const { revenue } = await db.get(`
         SELECT COALESCE(SUM(total_amount), 0) as revenue 
         FROM bookings 
         WHERE payment_status = 'paid' 
         AND created_at >= datetime('now', '-30 days')`
       );
+      console.log('Monthly revenue:', revenue);
+    } catch (error) {
+      console.error('Error fetching monthly revenue:', error.message);
+      throw error;
+    }
 
-      // Get pending approvals (documents + bookings)
+    try {
+      console.log('Fetching pending documents count');
       const { count: pendingDocs } = await db.get(
         "SELECT COUNT(*) as count FROM documents WHERE status = 'pending'"
       );
+      console.log('Pending documents count:', pendingDocs);
+    } catch (error) {
+      console.error('Error fetching pending documents count:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching pending bookings count');
       const { count: pendingBookings } = await db.get(
         "SELECT COUNT(*) as count FROM bookings WHERE status = 'pending'"
       );
+      console.log('Pending bookings count:', pendingBookings);
+    } catch (error) {
+      console.error('Error fetching pending bookings count:', error.message);
+      throw error;
+    }
 
-      // Get recent activities
+    try {
+      console.log('Fetching recent activities');
       const recentActivities = await db.all(`
         SELECT 
           'booking' as type,
@@ -65,45 +97,10 @@ router.get('/admin/statistics',
         ORDER BY b.created_at DESC
         LIMIT 10
       `);
-
-      // Format activities
-      const formattedActivities = recentActivities.map(activity => {
-        const activityDate = new Date(activity.created_at);
-        const now = new Date();
-        const diffInMinutes = Math.floor((now - activityDate) / 60000);
-        
-        let timeAgo;
-        if (diffInMinutes < 60) {
-          timeAgo = `${diffInMinutes}m ago`;
-        } else if (diffInMinutes < 1440) {
-          timeAgo = `${Math.floor(diffInMinutes / 60)}h ago`;
-        } else {
-          timeAgo = `${Math.floor(diffInMinutes / 1440)}d ago`;
-        }
-
-        return {
-          id: activity.id,
-          type: activity.type,
-          message: activity.message,
-          time: timeAgo
-        };
-      });
-
-      res.json({
-        stats: {
-          totalUsers: totalUsers || 0,
-          activeBookings: activeBookings || 0,
-          monthlyRevenue: revenue || 0,
-          pendingApprovals: (pendingDocs || 0) + (pendingBookings || 0)
-        },
-        recentActivities: formattedActivities
-      });
+      console.log('Recent activities:', recentActivities);
     } catch (error) {
-      console.error('Error fetching admin statistics:', error);
-      res.status(500).json({ 
-        message: 'Error fetching dashboard statistics',
-        error: error.message 
-      });
+      console.error('Error fetching recent activities:', error.message);
+      throw error;
     }
   }
 );

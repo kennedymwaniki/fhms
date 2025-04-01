@@ -67,7 +67,19 @@ const documentsService = {
       console.error('Error fetching document details:', error.response?.data || error.message);
       throw error;
     }
-  }
+  },
+
+  getAllDocuments: async () => {
+    try {
+      console.log('Fetching all documents from /documents/admin/all');
+      const response = await api.get('/documents/admin/all');
+      console.log('Response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all documents:', error.response?.data || error.message);
+      throw error;
+    }
+  },
 };
 
 export default documentsService;

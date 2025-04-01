@@ -393,4 +393,24 @@ router.delete('/:id',
   }
 );
 
+// Admin: Get all documents
+router.get('/admin/all',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const documents = await db.all(`
+        SELECT d.*, u.name as uploaded_by_name 
+        FROM documents d
+        LEFT JOIN users u ON d.uploaded_by = u.id
+        ORDER BY d.created_at DESC
+      `);
+
+      res.json({ documents });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 module.exports = router;

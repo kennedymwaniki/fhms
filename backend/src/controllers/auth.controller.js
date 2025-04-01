@@ -55,43 +55,59 @@ async function login(req, res) {
     }
 
     const { email, password } = req.body;
+    console.log('Login request payload:', req.body);
+    console.log('Checking if user exists for email:', email);
 
-    // Find user by email
+    if (!email || !password) {
+      console.error('Email or password missing in request payload');
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     const user = await User.findByEmail(email);
     if (!user) {
+      console.error('No user found for email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Verify password
+    console.log('User found:', user);
+    console.log('Verifying password...');
+
     const isPasswordValid = await User.comparePassword(password, user.password);
     if (!isPasswordValid) {
+      console.error('Password verification failed for email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        id: user.id,
-        email: user.email,
-        role: user.role 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
-    );
+    try {
+      console.log('Generating JWT token...');
+      const token = jwt.sign(
+        { 
+          id: user.id,
+          email: user.email,
+          role: user.role 
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRATION }
+      );
+      console.log('JWT token generated successfully');
 
-    // Log the login
-    await logUserActivity('logged_in', user.id, `User logged in: ${user.email}`);
+      // Log the login
+      await logUserActivity('logged_in', user.id, `User logged in: ${user.email}`);
 
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
-      token
-    });
+      res.json({
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        },
+        token
+      });
+    } catch (error) {
+      console.error('Error during JWT token generation or logging activity:', error);
+      res.status(500).json({ message: 'Server error during login' });
+    }
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
