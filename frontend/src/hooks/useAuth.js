@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { loginStart, loginSuccess, loginFailure, logout } from '../store/slices/authSlice';
+import { loginStart, loginSuccess, loginFailure, logout, updateProfile as updateProfileAction } from '../store/slices/authSlice';
 import authService from '../api/services/auth.service';
 import { toast } from 'sonner';
 
@@ -16,31 +16,42 @@ export const useAuth = () => {
       dispatch(loginSuccess(data));
       
       // Redirect based on user role
-      switch (data.user.role) {
-        case 'admin':
-          navigate('/dashboard/admin');
-          break;
-        case 'morgueAttendant':
-          navigate('/dashboard/morgue');
-          break;
-        default:
-          navigate('/dashboard/client');
+      if (data.user) {
+        switch (data.user.role) {
+          case 'admin':
+            navigate('/dashboard/admin');
+            break;
+          case 'morgue_attendant':
+          case 'morgueAttendant':
+            navigate('/dashboard/morgue');
+            break;
+          default:
+            navigate('/dashboard/client');
+        }
+        
+        toast.success('Login successful!');
+      } else {
+        throw new Error('Invalid user data received');
       }
-      
-      toast.success('Login successful!');
     } catch (error) {
       dispatch(loginFailure(error.response?.data?.message || 'Login failed'));
-      toast.error(error.response?.data?.message || 'Login failed');
+      toast.error(error.response?.data?.message || 'Login failed. Please check your credentials.');
+      throw error; // Re-throw for component-level handling
     }
   };
 
   const register = async (userData) => {
     try {
-      await authService.register(userData);
+      const response = await authService.register(userData);
       toast.success('Registration successful! Please login.');
       navigate('/login');
+      return response;
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      const errorMessage = error.response?.data?.message || 
+                          (error.response?.data?.errors?.[0]?.msg) || 
+                          'Registration failed';
+      toast.error(errorMessage);
+      throw error;
     }
   };
 
@@ -51,10 +62,10 @@ export const useAuth = () => {
     toast.success('Logged out successfully');
   };
 
-  const updateProfile = async (userData) => {
+  const updateProfileData = async (userData) => {
     try {
       const data = await authService.updateProfile(userData);
-      dispatch(loginSuccess({ user: data, token: localStorage.getItem('token') }));
+      dispatch(updateProfileAction(data.user));
       toast.success('Profile updated successfully');
       return data;
     } catch (error) {
@@ -71,6 +82,6 @@ export const useAuth = () => {
     login,
     register,
     logout: logoutUser,
-    updateProfile,
+    updateProfile: updateProfileData,
   };
 };

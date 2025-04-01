@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import api from '../../api/config';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -9,6 +9,7 @@ export default function LoginForm() {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -21,14 +22,13 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
 
-    console.log('Submitting login form with:', formData);
-
     try {
-      await api.post('/auth/login', formData);
-      toast.success('Login successful!');
-      // Redirect or perform further actions after login
+      // Use the login function from useAuth hook instead of direct API call
+      await login(formData);
+      // The redirect will happen in the useAuth hook
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed. Please try again.');
+      // Error handling is done in useAuth hook
+      console.error('Login error:', error);
     } finally {
       setLoading(false);
     }

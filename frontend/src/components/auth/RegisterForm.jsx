@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'sonner';
-import api from '../../api/config';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -16,6 +15,7 @@ export default function RegisterForm() {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -32,20 +32,30 @@ export default function RegisterForm() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
     setLoading(true);
     
     try {
       const { firstName, lastName, confirmPassword, ...otherData } = formData;
-      await api.post('/auth/register', {
-        ...otherData,
-        name: `${firstName} ${lastName}`,
-        role: 'client' // Default role for new registrations
-      });
       
-      toast.success('Registration successful! Please log in.');
-      navigate('/login');
+      // Prepare data for registration
+      const userData = {
+        ...otherData,
+        name: `${firstName} ${lastName}`.trim(),
+        role: 'client' // Default role for new registrations
+      };
+
+      // Use the register function from useAuth hook
+      await register(userData);
+      
+      // Navigation to login page is handled in the useAuth hook
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', error);
+      // Error handling is done in the useAuth hook
     } finally {
       setLoading(false);
     }
@@ -154,6 +164,7 @@ export default function RegisterForm() {
                 name="password"
                 type="password"
                 required
+                minLength={6}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 value={formData.password}
                 onChange={handleChange}
