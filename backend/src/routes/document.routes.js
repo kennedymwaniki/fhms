@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
+const { logDocumentActivity } = require('../utils/activityLogger');
 const db = require('../db/database');
 
 const router = express.Router();
@@ -235,12 +236,6 @@ router.post('/',
   uploadErrorHandler,
   documentValidation,
   async (req, res) => {
-    console.log('Document upload request received:', { 
-      body: req.body,
-      file: req.file ? { ...req.file, buffer: undefined } : null,
-      user: req.user
-    });
-
     try {
       // Validate request
       const errors = validationResult(req);
@@ -254,12 +249,10 @@ router.post('/',
 
       const { document_type, description, booking_id, deceased_id } = req.body;
       
-      // Validate document_type
       if (!document_type) {
         return res.status(400).json({ message: 'Document type is required' });
       }
 
-      // Use forward slashes for file paths
       const file_path = req.file.filename;
 
       // If booking_id is provided, verify access
@@ -269,16 +262,6 @@ router.post('/',
           return res.status(403).json({ message: 'Not authorized to add document to this booking' });
         }
       }
-
-      console.log('Inserting document into database:', {
-        name: req.file.originalname,
-        file_path,
-        document_type,
-        description,
-        deceased_id,
-        booking_id,
-        uploaded_by: req.user.id
-      });
 
       const result = await db.run(
         `INSERT INTO documents (
@@ -305,7 +288,10 @@ router.post('/',
         [result.lastID]
       );
 
-      console.log('Document uploaded successfully:', document);
+      // Log document upload
+      await logDocumentActivity('uploaded', document.id, req.user.id, 
+        `Document uploaded: ${document.name} (${document_type})${booking_id ? ` for booking #${booking_id}` : ''}`
+      );
 
       res.status(201).json({
         message: 'Document uploaded successfully',
@@ -313,8 +299,6 @@ router.post('/',
       });
     } catch (error) {
       console.error('Document upload error:', error);
-      
-      // Clean up uploaded file if database operation fails
       if (req.file) {
         try {
           fs.unlinkSync(path.join(__dirname, '../../uploads', req.file.filename));
@@ -322,11 +306,55 @@ router.post('/',
           console.error('Error deleting uploaded file:', unlinkError);
         }
       }
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+// Update document status (admin only)
+router.patch('/:id/status',
+  authenticateToken,
+  authorizeRoles('admin'),
+  body('status').isIn(['pending', 'approved', 'rejected']).withMessage('Invalid status'),
+  body('notes').optional().trim(),
+  async (req, res) => {
+    try {
+      const { status, notes } = req.body;
       
-      res.status(500).json({ 
-        message: 'Failed to upload document. Please try again.',
-        error: error.message 
+      const document = await db.get('SELECT * FROM documents WHERE id = ?', [req.params.id]);
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+
+      const result = await db.run(
+        `UPDATE documents 
+         SET status = ?, review_notes = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [status, notes || null, req.user.id, req.params.id]
+      );
+
+      const updatedDocument = await db.get(
+        `SELECT d.*, u.name as uploaded_by_name 
+         FROM documents d
+         LEFT JOIN users u ON d.uploaded_by = u.id
+         WHERE d.id = ?`,
+        [req.params.id]
+      );
+
+      // Log document status update
+      await logDocumentActivity(
+        'status_updated',
+        document.id,
+        req.user.id,
+        `Document ${status}: ${document.name}${notes ? ` - ${notes}` : ''}`
+      );
+
+      res.json({
+        message: 'Document status updated successfully',
+        document: updatedDocument
       });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
     }
   }
 );
@@ -347,7 +375,6 @@ router.delete('/:id',
         return res.status(403).json({ message: 'Not authorized to delete this document' });
       }
 
-      // Delete file from filesystem
       const filePath = path.join(__dirname, '../../uploads', document.file_path);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -356,7 +383,30 @@ router.delete('/:id',
       // Delete database record
       await db.run('DELETE FROM documents WHERE id = ?', [req.params.id]);
 
+      // Log document deletion
+      await logDocumentActivity('deleted', document.id, req.user.id, `Document deleted: ${document.name}`);
+
       res.json({ message: 'Document deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+// Admin: Get all documents
+router.get('/admin/all',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const documents = await db.all(`
+        SELECT d.*, u.name as uploaded_by_name 
+        FROM documents d
+        LEFT JOIN users u ON d.uploaded_by = u.id
+        ORDER BY d.created_at DESC
+      `);
+
+      res.json({ documents });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

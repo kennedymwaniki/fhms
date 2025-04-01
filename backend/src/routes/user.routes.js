@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const User = require('../models/user.model');
+const db = require('../db/database');
 
 const router = express.Router();
 
@@ -12,6 +13,97 @@ const updateUserValidation = [
   body('address').optional().trim(),
   body('password').optional().isLength({ min: 6 })
 ];
+
+// Get admin dashboard statistics
+router.get('/admin/statistics', 
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      console.log('Fetching total users count');
+      const { count: totalUsers } = await db.get(
+        "SELECT COUNT(*) as count FROM users WHERE role != 'admin'"
+      );
+      console.log('Total users count:', totalUsers);
+    } catch (error) {
+      console.error('Error fetching total users count:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching active bookings count');
+      const { count: activeBookings } = await db.get(
+        "SELECT COUNT(*) as count FROM bookings WHERE status IN ('pending', 'confirmed', 'in_progress')"
+      );
+      console.log('Active bookings count:', activeBookings);
+    } catch (error) {
+      console.error('Error fetching active bookings count:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching monthly revenue');
+      const { revenue } = await db.get(`
+        SELECT COALESCE(SUM(total_amount), 0) as revenue 
+        FROM bookings 
+        WHERE payment_status = 'paid' 
+        AND created_at >= datetime('now', '-30 days')`
+      );
+      console.log('Monthly revenue:', revenue);
+    } catch (error) {
+      console.error('Error fetching monthly revenue:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching pending documents count');
+      const { count: pendingDocs } = await db.get(
+        "SELECT COUNT(*) as count FROM documents WHERE status = 'pending'"
+      );
+      console.log('Pending documents count:', pendingDocs);
+    } catch (error) {
+      console.error('Error fetching pending documents count:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching pending bookings count');
+      const { count: pendingBookings } = await db.get(
+        "SELECT COUNT(*) as count FROM bookings WHERE status = 'pending'"
+      );
+      console.log('Pending bookings count:', pendingBookings);
+    } catch (error) {
+      console.error('Error fetching pending bookings count:', error.message);
+      throw error;
+    }
+
+    try {
+      console.log('Fetching recent activities');
+      const recentActivities = await db.all(`
+        SELECT 
+          'booking' as type,
+          b.id,
+          b.status as action,
+          u.name as client_name,
+          b.created_at,
+          CASE 
+            WHEN b.status = 'pending' THEN 'New booking created by ' || u.name
+            WHEN b.status = 'confirmed' THEN 'Booking #' || b.id || ' confirmed'
+            WHEN b.status = 'completed' THEN 'Service completed for booking #' || b.id
+            ELSE 'Booking #' || b.id || ' ' || b.status
+          END as message
+        FROM bookings b
+        JOIN users u ON b.user_id = u.id
+        ORDER BY b.created_at DESC
+        LIMIT 10
+      `);
+      console.log('Recent activities:', recentActivities);
+    } catch (error) {
+      console.error('Error fetching recent activities:', error.message);
+      throw error;
+    }
+  }
+);
 
 // Get all users (admin only)
 router.get('/', 

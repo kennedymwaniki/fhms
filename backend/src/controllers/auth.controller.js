@@ -2,10 +2,6 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/user.model');
 
-// Fallback values for JWT in case environment variables are not loaded
-const JWT_SECRET = process.env.JWT_SECRET || 'fhms_super_secret_key_replace_in_production';
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '24h';
-
 // Register a new user
 async function register(req, res) {
   try {
@@ -28,13 +24,16 @@ async function register(req, res) {
       name,
       email,
       password,
-      role: 'client', // Default role for registration
+      role: 'client',
       phone,
       address
     });
 
     // Get the created user (without password)
     const user = await User.findById(result.id);
+
+    // Log the registration
+    await logUserActivity('registered', user.id, `New user registration: ${user.name}`);
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -49,23 +48,32 @@ async function register(req, res) {
 // User login
 async function login(req, res) {
   try {
-    // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password } = req.body;
+    console.log('Login request payload:', req.body);
+    console.log('Checking if user exists for email:', email);
 
-    // Find user by email
+    if (!email || !password) {
+      console.error('Email or password missing in request payload');
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     const user = await User.findByEmail(email);
     if (!user) {
+      console.error('No user found for email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Verify password
+    console.log('User found:', user);
+    console.log('Verifying password...');
+
     const isPasswordValid = await User.comparePassword(password, user.password);
     if (!isPasswordValid) {
+      console.error('Password verification failed for email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -76,24 +84,70 @@ async function login(req, res) {
         email: user.email,
         role: user.role 
       },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRATION }
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRATION }
     );
 
-    // Return user info and token
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
-      token
-    });
+      res.json({
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        },
+        token
+      });
+    } catch (error) {
+      console.error('Error during JWT token generation or logging activity:', error);
+      res.status(500).json({ message: 'Server error during login' });
+    }
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
+  }
+}
+
+// Create staff user (admin only)
+async function createStaffUser(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { name, email, password, role, phone, address } = req.body;
+    
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ message: 'User with this email already exists' });
+    }
+    
+    if (role !== 'client' && role !== 'morgue_attendant' && role !== 'admin') {
+      return res.status(400).json({ message: 'Invalid role specified' });
+    }
+
+    const result = await User.create({
+      name,
+      email,
+      password,
+      role,
+      phone,
+      address
+    });
+
+    const user = await User.findById(result.id);
+
+    // Log staff user creation
+    await logUserActivity('created', user.id, `Staff user created: ${user.name} (${role})`);
+
+    res.status(201).json({
+      message: 'Staff user created successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Create staff user error:', error);
+    res.status(500).json({ message: 'Server error while creating staff user' });
   }
 }
 
@@ -101,8 +155,6 @@ async function login(req, res) {
 async function getCurrentUser(req, res) {
   try {
     const userId = req.user.id;
-    
-    // Get user data from database
     const user = await User.findById(userId);
     
     if (!user) {
@@ -113,51 +165,6 @@ async function getCurrentUser(req, res) {
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(500).json({ message: 'Server error while fetching user profile' });
-  }
-}
-
-// Create staff user (admin only)
-async function createStaffUser(req, res) {
-  try {
-    // Validate request
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { name, email, password, role, phone, address } = req.body;
-    
-    // Check if user already exists
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return res.status(409).json({ message: 'User with this email already exists' });
-    }
-    
-    // Validate role (only admins can create other admins)
-    if (role !== 'client' && role !== 'morgue_attendant' && role !== 'admin') {
-      return res.status(400).json({ message: 'Invalid role specified' });
-    }
-
-    // Create new user with specified role
-    const result = await User.create({
-      name,
-      email,
-      password,
-      role,
-      phone,
-      address
-    });
-
-    // Get the created user (without password)
-    const user = await User.findById(result.id);
-
-    res.status(201).json({
-      message: 'Staff user created successfully',
-      user
-    });
-  } catch (error) {
-    console.error('Create staff user error:', error);
-    res.status(500).json({ message: 'Server error while creating staff user' });
   }
 }
 

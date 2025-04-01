@@ -4,6 +4,7 @@ const db = require('../db/database');
 class User {
   // Find user by email
   static async findByEmail(email) {
+    console.log('Executing findByEmail query for email:', email);
     return await db.get('SELECT * FROM users WHERE email = ?', [email]);
   }
 
@@ -114,6 +115,9 @@ class User {
 
   // Compare password for login
   static async comparePassword(plainPassword, hashedPassword) {
+    if (!plainPassword || !hashedPassword) {
+      throw new Error('Both plainPassword and hashedPassword are required');
+    }
     return await bcrypt.compare(plainPassword, hashedPassword);
   }
 }
