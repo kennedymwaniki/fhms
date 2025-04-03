@@ -14,7 +14,10 @@ export default function DashboardOverview() {
     totalUsers: 0,
     activeBookings: 0,
     monthlyRevenue: 0,
-    pendingApprovals: 0
+    pendingApprovals: 0,
+    usersTrend: 0,
+    bookingsTrend: 0,
+    revenueTrend: 0
   });
   const [recentActivities, setRecentActivities] = useState([]);
 
@@ -40,14 +43,26 @@ export default function DashboardOverview() {
     return () => clearInterval(interval);
   }, []);
 
+  const getTrendDirection = (trendValue) => {
+    if (trendValue > 0) return 'up';
+    if (trendValue < 0) return 'down';
+    return 'neutral';
+  };
+
+  const formatTrendChange = (value, trendValue, prefix = '') => {
+    if (trendValue > 0) return `+${prefix}${trendValue}%`;
+    if (trendValue < 0) return `-${prefix}${Math.abs(trendValue)}%`;
+    return 'No change';
+  };
+
   const quickStats = [
     {
       title: 'Total Users',
       value: stats.totalUsers,
       icon: Users,
       color: 'bg-blue-100 text-blue-600',
-      trend: 'up',
-      change: '+5%',
+      trend: getTrendDirection(stats.usersTrend),
+      change: formatTrendChange(stats.totalUsers, stats.usersTrend),
       format: (value) => value
     },
     {
@@ -55,8 +70,8 @@ export default function DashboardOverview() {
       value: stats.activeBookings,
       icon: Calendar,
       color: 'bg-green-100 text-green-600',
-      trend: stats.activeBookings > 0 ? 'up' : 'neutral',
-      change: stats.activeBookings > 0 ? `+${stats.activeBookings}` : '0',
+      trend: getTrendDirection(stats.bookingsTrend),
+      change: formatTrendChange(stats.activeBookings, stats.bookingsTrend),
       format: (value) => value
     },
     {
@@ -64,8 +79,8 @@ export default function DashboardOverview() {
       value: stats.monthlyRevenue,
       icon: DollarSign,
       color: 'bg-purple-100 text-purple-600',
-      trend: stats.monthlyRevenue > 0 ? 'up' : 'neutral',
-      change: stats.monthlyRevenue > 0 ? '+KSH ' + (stats.monthlyRevenue / 100).toFixed(1) + 'K' : 'KSH 0',
+      trend: getTrendDirection(stats.revenueTrend),
+      change: formatTrendChange(stats.monthlyRevenue, stats.revenueTrend, 'KSH '),
       format: (value) => `KSH ${value.toLocaleString()}`
     },
     {

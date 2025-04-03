@@ -25,10 +25,30 @@ router.get('/admin/statistics',
         "SELECT COUNT(*) as count FROM users WHERE role != 'admin'"
       );
       
+      // Get previous period total users for trend calculation
+      const { count: prevPeriodUsers } = await db.get(
+        "SELECT COUNT(*) as count FROM users WHERE role != 'admin' AND created_at <= datetime('now', '-30 days')"
+      );
+      
+      // Calculate users trend (percentage change)
+      const usersTrend = prevPeriodUsers > 0 
+        ? Math.round(((totalUsers - prevPeriodUsers) / prevPeriodUsers) * 100) 
+        : 0;
+      
       // Get active bookings count
       const { count: activeBookings } = await db.get(
         "SELECT COUNT(*) as count FROM bookings WHERE status IN ('pending', 'confirmed', 'in_progress')"
       );
+
+      // Get previous period active bookings for trend calculation
+      const { count: prevPeriodBookings } = await db.get(
+        "SELECT COUNT(*) as count FROM bookings WHERE status IN ('pending', 'confirmed', 'in_progress') AND created_at <= datetime('now', '-30 days')"
+      );
+      
+      // Calculate bookings trend (percentage change)
+      const bookingsTrend = prevPeriodBookings > 0 
+        ? Math.round(((activeBookings - prevPeriodBookings) / prevPeriodBookings) * 100) 
+        : 0;
 
       // Get monthly revenue from completed/paid bookings
       const { revenue } = await db.get(`
@@ -37,6 +57,19 @@ router.get('/admin/statistics',
         WHERE payment_status = 'paid' 
         AND created_at >= datetime('now', '-30 days')`
       );
+      
+      // Get previous period revenue for trend calculation
+      const { revenue: prevPeriodRevenue } = await db.get(`
+        SELECT COALESCE(SUM(total_amount), 0) as revenue 
+        FROM bookings 
+        WHERE payment_status = 'paid' 
+        AND created_at BETWEEN datetime('now', '-60 days') AND datetime('now', '-30 days')`
+      );
+      
+      // Calculate revenue trend (percentage change)
+      const revenueTrend = prevPeriodRevenue > 0 
+        ? Math.round(((revenue - prevPeriodRevenue) / prevPeriodRevenue) * 100) 
+        : 0;
 
       // Get pending approvals (documents + bookings)
       const { count: pendingDocs } = await db.get(
@@ -94,7 +127,10 @@ router.get('/admin/statistics',
           totalUsers: totalUsers || 0,
           activeBookings: activeBookings || 0,
           monthlyRevenue: revenue || 0,
-          pendingApprovals: (pendingDocs || 0) + (pendingBookings || 0)
+          pendingApprovals: (pendingDocs || 0) + (pendingBookings || 0),
+          usersTrend: usersTrend,
+          bookingsTrend: bookingsTrend,
+          revenueTrend: revenueTrend
         },
         recentActivities: formattedActivities
       });
