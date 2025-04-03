@@ -30,6 +30,161 @@ router.get('/my',
   }
 );
 
+// Get financial summary for admin dashboard
+router.get('/summary',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const { timeframe = 'month' } = req.query;
+      
+      // Calculate date range based on timeframe
+      const endDate = new Date();
+      let startDate = new Date();
+      
+      switch (timeframe) {
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setMonth(endDate.getMonth() - 1); // Default to 1 month
+      }
+      
+      // Format dates for SQL query
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
+      // Get total revenue from completed payments
+      const { totalRevenue } = await db.get(`
+        SELECT COALESCE(SUM(amount), 0) as totalRevenue
+        FROM payments
+        WHERE status = 'completed'
+        AND created_at BETWEEN ? AND ?`,
+        [startDateStr, endDateStr]
+      );
+      
+      // Get total bookings count
+      const { totalBookings } = await db.get(`
+        SELECT COUNT(*) as totalBookings
+        FROM bookings
+        WHERE created_at BETWEEN ? AND ?`,
+        [startDateStr, endDateStr]
+      );
+      
+      // Get pending payments count
+      const { pendingPayments } = await db.get(`
+        SELECT COUNT(*) as pendingPayments
+        FROM bookings
+        WHERE payment_status IN ('pending', 'partial')
+        AND created_at BETWEEN ? AND ?`,
+        [startDateStr, endDateStr]
+      );
+      
+      // Calculate average transaction value
+      let avgTransactionValue = 0;
+      if (totalBookings > 0) {
+        const { avgValue } = await db.get(`
+          SELECT COALESCE(AVG(amount), 0) as avgValue
+          FROM payments
+          WHERE status = 'completed'
+          AND created_at BETWEEN ? AND ?`,
+          [startDateStr, endDateStr]
+        );
+        avgTransactionValue = avgValue || 0;
+      }
+      
+      res.json({
+        totalRevenue: totalRevenue || 0,
+        totalBookings: totalBookings || 0,
+        avgTransactionValue: avgTransactionValue || 0,
+        pendingPayments: pendingPayments || 0,
+        timeframe
+      });
+    } catch (error) {
+      console.error('Error generating financial summary:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+// Get recent transactions for admin dashboard
+router.get('/transactions',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const { timeframe = 'month', limit = 10 } = req.query;
+      
+      // Calculate date range based on timeframe
+      const endDate = new Date();
+      let startDate = new Date();
+      
+      switch (timeframe) {
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setMonth(endDate.getMonth() - 1); // Default to 1 month
+      }
+      
+      // Format dates for SQL query
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
+      // Get recent transactions
+      const transactions = await db.all(`
+        SELECT 
+          p.id,
+          p.amount,
+          p.status,
+          p.payment_method as paymentMethod,
+          p.created_at as date,
+          CASE 
+            WHEN bs.service_id IS NOT NULL THEN s.name
+            ELSE 'Booking Payment'
+          END as description,
+          u.name as customer
+        FROM payments p
+        JOIN bookings b ON p.booking_id = b.id
+        JOIN users u ON b.user_id = u.id
+        LEFT JOIN booking_services bs ON b.id = bs.booking_id
+        LEFT JOIN services s ON bs.service_id = s.id
+        WHERE p.created_at BETWEEN ? AND ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+        LIMIT ?`,
+        [startDateStr, endDateStr, parseInt(limit)]
+      );
+      
+      res.json({
+        transactions,
+        timeframe
+      });
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 // Get user's pending payments/bookings that need payment
 router.get('/pending',
   authenticateToken,
