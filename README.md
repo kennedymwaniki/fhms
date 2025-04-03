@@ -21,6 +21,26 @@ The Funeral Home Management System is a comprehensive web application designed t
 
 ## Overview
 
+### Project Description
+
+The Funeral Home Management System (FHMS) is a comprehensive digital solution designed to address the unique challenges faced by funeral homes in managing their operations, services, and client interactions. In an industry where compassion, efficiency, and attention to detail are paramount, traditional paper-based processes and disconnected systems often lead to inefficiencies, communication gaps, and administrative burden during an already sensitive time for clients.
+
+FHMS aims to solve these critical challenges by:
+
+1. **Streamlining Administrative Workflows**: Reducing the paperwork burden by digitizing document management, including death certificates, burial permits, and contractual agreements, allowing staff to focus more on client care and less on administrative tasks.
+
+2. **Improving Client Experience**: Providing families with a transparent, accessible platform to arrange services, track progress, submit required information, and make payments—all from the comfort of their homes during a difficult time.
+
+3. **Enhancing Operational Efficiency**: Coordinating the complex logistics between different departments (morgue, transport, ceremony planning) through digital task management and real-time status updates.
+
+4. **Ensuring Regulatory Compliance**: Maintaining proper documentation and audit trails to meet strict regulatory requirements in the funeral industry.
+
+5. **Providing Data-Driven Insights**: Offering analytics and reporting tools to help funeral home management make informed decisions about service offerings, resource allocation, and financial planning.
+
+The system serves as a bridge between the sensitive, human-focused nature of funeral services and the need for efficient, accurate business operations in modern funeral homes of all sizes.
+
+### Role-Based Functionality
+
 The Funeral Home Management System (FHMS) provides different user experiences and capabilities based on role:
 
 - **Admin Users**: Complete system management including user management, service offerings, document review, and financial reports
