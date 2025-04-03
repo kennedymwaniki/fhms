@@ -23,40 +23,59 @@ export default function FinancialManagement() {
   const [reportType, setReportType] = useState('revenue');
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState({
-    totalRevenue: 85600,
-    totalBookings: 42,
-    avgTransactionValue: 2038,
-    pendingPayments: 12,
+    totalRevenue: 0,
+    totalBookings: 0,
+    avgTransactionValue: 0,
+    pendingPayments: 0,
   });
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportTimeframe, setReportTimeframe] = useState('month');
   const [reportFormat, setReportFormat] = useState('all');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simulated data - replace with actual API calls
   useEffect(() => {
-    setTransactions([
-      {
-        id: 1,
-        date: '2024-03-25',
-        description: 'Premium Funeral Package',
-        amount: 3500,
-        status: 'completed',
-        customer: 'John Smith',
-        paymentMethod: 'Credit Card'
-      },
-      {
-        id: 2,
-        date: '2024-03-24',
-        description: 'Basic Memorial Service',
-        amount: 1800,
-        status: 'pending',
-        customer: 'Mary Johnson',
-        paymentMethod: 'Bank Transfer'
-      },
-      // Add more transactions as needed
-    ]);
-  }, []);
+    fetchFinancialData();
+  }, [timeframe]);
+
+  const fetchFinancialData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch summary statistics from the server
+      const summaryResponse = await api.get(`/payments/summary?timeframe=${timeframe}`);
+      
+      if (summaryResponse.data) {
+        setSummary({
+          totalRevenue: summaryResponse.data.totalRevenue || 0,
+          totalBookings: summaryResponse.data.totalBookings || 0,
+          avgTransactionValue: summaryResponse.data.avgTransactionValue || 0,
+          pendingPayments: summaryResponse.data.pendingPayments || 0,
+        });
+      }
+      
+      // Fetch recent transactions
+      const transactionsResponse = await api.get(`/payments/transactions?timeframe=${timeframe}`);
+      
+      if (transactionsResponse.data && transactionsResponse.data.transactions) {
+        setTransactions(transactionsResponse.data.transactions);
+      }
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+      toast.error('Failed to load financial data');
+      
+      // Fallback to empty data
+      setSummary({
+        totalRevenue: 0,
+        totalBookings: 0,
+        avgTransactionValue: 0,
+        pendingPayments: 0,
+      });
+      setTransactions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const generateReport = () => {
     setShowReportModal(true);
@@ -94,8 +113,8 @@ export default function FinancialManagement() {
   };
 
   const downloadReport = () => {
-    // Simulated download - replace with actual API call
-    toast.success('Downloading report');
+    // Start the report generation process
+    generateReport();
   };
 
   return (
@@ -120,11 +139,14 @@ export default function FinancialManagement() {
             <div className="p-3 rounded-lg bg-green-100 text-green-600">
               <DollarSign className="w-6 h-6" />
             </div>
-            <span className="text-sm font-medium text-green-600">+12.5%</span>
           </div>
-          <p className="mt-4 text-2xl font-semibold text-gray-900">
-            ${summary.totalRevenue.toLocaleString()}
-          </p>
+          {isLoading ? (
+            <div className="animate-pulse mt-4 h-6 bg-gray-200 rounded w-3/4"></div>
+          ) : (
+            <p className="mt-4 text-2xl font-semibold text-gray-900">
+              ${summary.totalRevenue.toLocaleString()}
+            </p>
+          )}
           <p className="mt-1 text-sm text-gray-500">Total Revenue</p>
         </div>
 
@@ -133,11 +155,14 @@ export default function FinancialManagement() {
             <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
               <Users className="w-6 h-6" />
             </div>
-            <span className="text-sm font-medium text-blue-600">+8.2%</span>
           </div>
-          <p className="mt-4 text-2xl font-semibold text-gray-900">
-            {summary.totalBookings}
-          </p>
+          {isLoading ? (
+            <div className="animate-pulse mt-4 h-6 bg-gray-200 rounded w-3/4"></div>
+          ) : (
+            <p className="mt-4 text-2xl font-semibold text-gray-900">
+              {summary.totalBookings}
+            </p>
+          )}
           <p className="mt-1 text-sm text-gray-500">Total Bookings</p>
         </div>
 
@@ -146,11 +171,14 @@ export default function FinancialManagement() {
             <div className="p-3 rounded-lg bg-purple-100 text-purple-600">
               <Tag className="w-6 h-6" />
             </div>
-            <span className="text-sm font-medium text-purple-600">+5.8%</span>
           </div>
-          <p className="mt-4 text-2xl font-semibold text-gray-900">
-            ${summary.avgTransactionValue.toLocaleString()}
-          </p>
+          {isLoading ? (
+            <div className="animate-pulse mt-4 h-6 bg-gray-200 rounded w-3/4"></div>
+          ) : (
+            <p className="mt-4 text-2xl font-semibold text-gray-900">
+              ${summary.avgTransactionValue.toLocaleString()}
+            </p>
+          )}
           <p className="mt-1 text-sm text-gray-500">Average Transaction</p>
         </div>
 
@@ -159,11 +187,17 @@ export default function FinancialManagement() {
             <div className="p-3 rounded-lg bg-yellow-100 text-yellow-600">
               <CreditCard className="w-6 h-6" />
             </div>
-            <span className="text-sm font-medium text-yellow-600">{summary.pendingPayments} pending</span>
+            {!isLoading && (
+              <span className="text-sm font-medium text-yellow-600">{summary.pendingPayments} pending</span>
+            )}
           </div>
-          <p className="mt-4 text-2xl font-semibold text-gray-900">
-            ${(summary.pendingPayments * summary.avgTransactionValue).toLocaleString()}
-          </p>
+          {isLoading ? (
+            <div className="animate-pulse mt-4 h-6 bg-gray-200 rounded w-3/4"></div>
+          ) : (
+            <p className="mt-4 text-2xl font-semibold text-gray-900">
+              ${(summary.pendingPayments * (summary.avgTransactionValue || 0)).toLocaleString()}
+            </p>
+          )}
           <p className="mt-1 text-sm text-gray-500">Pending Payments</p>
         </div>
       </div>
@@ -226,38 +260,55 @@ export default function FinancialManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {transactions.map((transaction) => (
-                <tr key={transaction.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(transaction.date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {transaction.description}
+              {isLoading ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4">
+                    <div className="flex justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-600"></div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {transaction.paymentMethod}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.customer}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${transaction.amount.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        transaction.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {transaction.status}
-                    </span>
+                    <p className="text-center mt-2 text-gray-500">Loading transactions...</p>
                   </td>
                 </tr>
-              ))}
+              ) : transactions.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                    No transactions found for the selected period
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(transaction.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {transaction.description}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {transaction.paymentMethod}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {transaction.customer}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ${transaction.amount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          transaction.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {transaction.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -30,6 +30,40 @@ router.get('/my',
   }
 );
 
+// Get user's pending payments/bookings that need payment
+router.get('/pending',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const bookings = await db.all(
+        `SELECT b.*, 
+                d.first_name as deceased_first_name, 
+                d.last_name as deceased_last_name
+         FROM bookings b
+         JOIN deceased d ON b.deceased_id = d.id
+         WHERE b.user_id = ? AND b.payment_status IN ('pending', 'partial')
+         ORDER BY b.created_at DESC`,
+        [req.user.id]
+      );
+      
+      // Get services for each booking
+      for (const booking of bookings) {
+        booking.services = await db.all(
+          `SELECT bs.*, s.name as service_name, s.price as service_price
+           FROM booking_services bs
+           JOIN services s ON bs.service_id = s.id
+           WHERE bs.booking_id = ?`,
+          [booking.id]
+        );
+      }
+      
+      res.json({ bookings });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 // Initialize M-Pesa payment
 router.post('/mpesa/initiate',
   authenticateToken,

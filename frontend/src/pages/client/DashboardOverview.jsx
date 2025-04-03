@@ -179,7 +179,7 @@ export default function DashboardOverview() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Link
             to="/dashboard/client/documents"
             className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
@@ -205,22 +205,7 @@ export default function DashboardOverview() {
               </div>
               <div className="ml-4">
                 <p className="text-lg font-medium text-gray-900">Payment History</p>
-                <p className="text-sm text-gray-500">View your payments</p>
-              </div>
-            </div>
-          </Link>
-          
-          <Link
-            to="/dashboard/client/messages"
-            className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center">
-              <div className="p-3 rounded-lg bg-purple-100 text-purple-600">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <p className="text-lg font-medium text-gray-900">Messages</p>
-                <p className="text-sm text-gray-500">Contact support</p>
+                <p className="text-sm text-gray-500">View and manage payments</p>
               </div>
             </div>
           </Link>

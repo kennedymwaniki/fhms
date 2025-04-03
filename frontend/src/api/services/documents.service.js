@@ -95,7 +95,7 @@ const documentsService = {
 
   getDocumentStats: async () => {
     try {
-      const response = await api.get('/documents/stats');
+      const response = await api.get('/documents/stats/summary');
       return response.data;
     } catch (error) {
       console.error('Error fetching document statistics:', error.response?.data || error.message);

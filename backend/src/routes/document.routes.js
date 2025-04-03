@@ -397,4 +397,41 @@ router.delete('/:id',
   }
 );
 
+// Get document statistics (admin only)
+router.get('/stats/summary',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      // Get total document count
+      const { total } = await db.get('SELECT COUNT(*) as total FROM documents');
+      
+      // Get count by status
+      const pendingCount = await db.get(
+        "SELECT COUNT(*) as count FROM documents WHERE status = 'pending'"
+      );
+      
+      const approvedCount = await db.get(
+        "SELECT COUNT(*) as count FROM documents WHERE status = 'approved'"
+      );
+      
+      const rejectedCount = await db.get(
+        "SELECT COUNT(*) as count FROM documents WHERE status = 'rejected'"
+      );
+
+      res.json({
+        stats: {
+          total: total || 0,
+          pending: pendingCount.count || 0,
+          approved: approvedCount.count || 0,
+          rejected: rejectedCount.count || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error getting document statistics:', error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 module.exports = router;
