@@ -81,10 +81,15 @@ export default function DashboardOverview() {
     </Link>
   );
 
+  // Get a proper greeting with a fallback if user name is undefined
+  const getWelcomeMessage = () => {
+    return user && user.name ? `Welcome back, ${user.name}` : 'Welcome to your Dashboard';
+  };
+
   return (
     <div className="flex-1 overflow-auto">
       <DashboardHeader 
-        pageTitle={`Welcome back, ${user?.name}`}
+        pageTitle={getWelcomeMessage()}
         actions={headerActions}
       />
       
