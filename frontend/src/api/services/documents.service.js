@@ -69,17 +69,39 @@ const documentsService = {
     }
   },
 
-  getAllDocuments: async () => {
+  // Admin methods
+  getAllDocuments: async (filters = {}) => {
     try {
-      console.log('Fetching all documents from /documents/admin/all');
-      const response = await api.get('/documents/admin/all');
-      console.log('Response:', response.data);
+      const response = await api.get('/documents', { params: filters });
       return response.data;
     } catch (error) {
       console.error('Error fetching all documents:', error.response?.data || error.message);
       throw error;
     }
   },
+
+  updateDocumentStatus: async (id, status, notes) => {
+    try {
+      const response = await api.patch(`/documents/${id}/status`, {
+        status,
+        notes
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating document status:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  getDocumentStats: async () => {
+    try {
+      const response = await api.get('/documents/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching document statistics:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 };
 
 export default documentsService;

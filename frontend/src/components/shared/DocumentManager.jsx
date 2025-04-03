@@ -51,9 +51,9 @@ export default function DocumentManager() {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      // Ensure a valid ID is generated
+      // Simulated upload - replace with actual API call
       const newDocument = {
-        id: Date.now() || Math.random(), // Fallback to Math.random() if Date.now() fails
+        id: Date.now(),
         name: file.name,
         type: 'death-certificate', // This would come from form input
         dateUploaded: new Date().toISOString().split('T')[0],

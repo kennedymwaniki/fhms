@@ -1,17 +1,26 @@
 import axios from 'axios';
+import { store } from '../store';
+import { logout } from '../store/slices/authSlice';
 
-// Create axios instance with base URL
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
-// Request interceptor to add auth token to requests
+// Request interceptor for API calls
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // First try to get token from Redux store
+    const state = store.getState();
+    let token = state.auth.token;
+    
+    // If not in store, try localStorage
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -22,23 +31,16 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle common errors
+// Response interceptor for API calls
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Handle unauthorized errors (expired token)
-    if (error.response && error.response.status === 401) {
-      // Clear token if it's expired or invalid
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Clear token from localStorage
       localStorage.removeItem('token');
-      
-      // Don't redirect if the user is already on the login page
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
-      }
+      // Dispatch logout action
+      store.dispatch(logout());
     }
-    
     return Promise.reject(error);
   }
 );

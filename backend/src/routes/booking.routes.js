@@ -227,35 +227,56 @@ router.patch('/:id/status',
     .withMessage('Invalid status'),
   async (req, res) => {
     try {
-      const result = await db.run(
+      // First check if booking exists
+      const existingBooking = await db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+      if (!existingBooking) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+
+      // Update the booking status
+      await db.run(
         `UPDATE bookings 
          SET status = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [req.body.status, req.params.id]
       );
 
-      if (result.id) {
-        const updatedBooking = await db.get(
-          'SELECT * FROM bookings WHERE id = ?',
-          [req.params.id]
-        );
-        
-        // Log booking status update
-        await logBookingActivity(
-          'status_updated', 
-          updatedBooking.id, 
-          req.user.id, 
-          `Booking status updated to: ${req.body.status}`
-        );
+      // Fetch the updated booking with all necessary joins
+      const updatedBooking = await db.get(`
+        SELECT b.*, 
+               d.first_name as deceased_first_name, 
+               d.last_name as deceased_last_name,
+               u.name as client_name
+        FROM bookings b
+        JOIN deceased d ON b.deceased_id = d.id
+        JOIN users u ON b.user_id = u.id
+        WHERE b.id = ?
+      `, [req.params.id]);
+      
+      // Get booking services
+      const services = await db.all(`
+        SELECT bs.*, s.name as service_name, s.price as service_price
+        FROM booking_services bs
+        JOIN services s ON bs.service_id = s.id
+        WHERE bs.booking_id = ?
+      `, [req.params.id]);
 
-        res.json({
-          message: 'Booking status updated successfully',
-          booking: updatedBooking
-        });
-      } else {
-        res.status(404).json({ message: 'Booking not found' });
-      }
+      updatedBooking.services = services;
+        
+      // Log booking status update
+      await logBookingActivity(
+        'status_updated', 
+        updatedBooking.id, 
+        req.user.id, 
+        `Booking status updated to: ${req.body.status}`
+      );
+
+      res.json({
+        message: 'Booking status updated successfully',
+        booking: updatedBooking
+      });
     } catch (error) {
+      console.error('Status update error:', error);
       res.status(500).json({ message: error.message });
     }
   }
@@ -270,35 +291,56 @@ router.patch('/:id/payment',
     .withMessage('Invalid payment status'),
   async (req, res) => {
     try {
-      const result = await db.run(
+      // First check if booking exists
+      const existingBooking = await db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+      if (!existingBooking) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+
+      // Update payment status
+      await db.run(
         `UPDATE bookings 
          SET payment_status = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [req.body.payment_status, req.params.id]
       );
 
-      if (result.id) {
-        const updatedBooking = await db.get(
-          'SELECT * FROM bookings WHERE id = ?',
-          [req.params.id]
-        );
+      // Fetch the updated booking with all necessary joins
+      const updatedBooking = await db.get(`
+        SELECT b.*, 
+               d.first_name as deceased_first_name, 
+               d.last_name as deceased_last_name,
+               u.name as client_name
+        FROM bookings b
+        JOIN deceased d ON b.deceased_id = d.id
+        JOIN users u ON b.user_id = u.id
+        WHERE b.id = ?
+      `, [req.params.id]);
 
-        // Log payment status update
-        await logBookingActivity(
-          'payment_status_updated', 
-          updatedBooking.id, 
-          req.user.id, 
-          `Payment status updated to: ${req.body.payment_status}`
-        );
+      // Get booking services
+      const services = await db.all(`
+        SELECT bs.*, s.name as service_name, s.price as service_price
+        FROM booking_services bs
+        JOIN services s ON bs.service_id = s.id
+        WHERE bs.booking_id = ?
+      `, [req.params.id]);
 
-        res.json({
-          message: 'Payment status updated successfully',
-          booking: updatedBooking
-        });
-      } else {
-        res.status(404).json({ message: 'Booking not found' });
-      }
+      updatedBooking.services = services;
+
+      // Log payment status update
+      await logBookingActivity(
+        'payment_status_updated', 
+        updatedBooking.id, 
+        req.user.id, 
+        `Payment status updated to: ${req.body.payment_status}`
+      );
+
+      res.json({
+        message: 'Payment status updated successfully',
+        booking: updatedBooking
+      });
     } catch (error) {
+      console.error('Payment status update error:', error);
       res.status(500).json({ message: error.message });
     }
   }

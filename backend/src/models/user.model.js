@@ -4,22 +4,7 @@ const db = require('../db/database');
 class User {
   // Find user by email
   static async findByEmail(email) {
-    console.log('Executing findByEmail query for email:', email);
-    try {
-      // Check if email is valid
-      if (!email || typeof email !== 'string') {
-        console.error('Invalid email parameter:', email);
-        return null;
-      }
-
-      // Make sure to explicitly select all fields including password
-      const user = await db.get('SELECT id, name, email, password, role, phone, address, created_at FROM users WHERE email = ? COLLATE NOCASE', [email.trim()]);
-      console.log('User found for email:', email, !!user, user ? 'with password:' + !!user.password : 'no user');
-      return user;
-    } catch (error) {
-      console.error('Error in findByEmail:', error.message);
-      throw error;
-    }
+    return await db.get('SELECT * FROM users WHERE email = ?', [email]);
   }
 
   // Find user by ID
@@ -29,31 +14,16 @@ class User {
 
   // Create a new user
   static async create(userData) {
-    try {
-      // Validate required fields
-      if (!userData.email || !userData.password || !userData.name) {
-        throw new Error('Required fields missing (name, email, or password)');
-      }
-      
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
-      
-      // Handle null/undefined fields
-      const phone = userData.phone || '';
-      const address = userData.address || '';
-      const role = userData.role || 'client';
-      
-      // Insert the user
-      const result = await db.run(
-        'INSERT INTO users (name, email, password, role, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
-        [userData.name, userData.email.toLowerCase().trim(), hashedPassword, role, phone, address]
-      );
-      
-      return result;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    
+    // Insert the user
+    const result = await db.run(
+      'INSERT INTO users (name, email, password, role, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
+      [userData.name, userData.email, hashedPassword, userData.role || 'client', userData.phone, userData.address]
+    );
+    
+    return result;
   }
 
   // Update user details
@@ -144,33 +114,7 @@ class User {
 
   // Compare password for login
   static async comparePassword(plainPassword, hashedPassword) {
-    // Better validation with detailed error messages
-    if (!plainPassword) {
-      console.error('plainPassword is missing or empty');
-      throw new Error('Login error: Password is required');
-    }
-    
-    if (!hashedPassword) {
-      console.error('hashedPassword is missing or empty');
-      throw new Error('Authentication error - password data incomplete');
-    }
-    
-    // Safety check for non-string values
-    if (typeof plainPassword !== 'string' || typeof hashedPassword !== 'string') {
-      console.error('Password type error:', { 
-        plainPasswordType: typeof plainPassword,
-        hashedPasswordType: typeof hashedPassword
-      });
-      throw new Error('Invalid password format');
-    }
-    
-    // Compare passwords with bcrypt
-    try {
-      return await bcrypt.compare(plainPassword, hashedPassword);
-    } catch (error) {
-      console.error('bcrypt comparison error:', error);
-      throw new Error('Password comparison failed');
-    }
+    return await bcrypt.compare(plainPassword, hashedPassword);
   }
 }
 

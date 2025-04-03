@@ -1,13 +1,7 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const { validationResult } = require('express-validator');
 const User = require('../models/user.model');
 const { logUserActivity } = require('../utils/activityLogger');
-const db = require('../db/database');
-
-// Fallback value for JWT secret and expiration in case environment variable is not loaded
-const JWT_SECRET = process.env.JWT_SECRET || 'fhms_super_secret_key_replace_in_production';
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '24h';
 
 // Register a new user
 async function register(req, res) {
@@ -20,15 +14,10 @@ async function register(req, res) {
 
     const { name, email, password, phone, address } = req.body;
 
-    // Check if user already exists - with better error handling
-    try {
-      const existingUser = await User.findByEmail(email);
-      if (existingUser) {
-        return res.status(409).json({ message: 'User with this email already exists' });
-      }
-    } catch (error) {
-      console.error('Error checking existing user:', error);
-      // Don't stop registration if the check fails - might be DB connectivity issue
+    // Check if user already exists
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ message: 'User with this email already exists' });
     }
 
     // Create new user with 'client' role by default
@@ -37,20 +26,15 @@ async function register(req, res) {
       email,
       password,
       role: 'client',
-      phone: phone || '',
-      address: address || ''
+      phone,
+      address
     });
 
     // Get the created user (without password)
-    const user = await User.findById(result.lastID || result.id);
+    const user = await User.findById(result.id);
 
     // Log the registration
-    try {
-      await logUserActivity('registered', user.id, `New user registration: ${user.name}`);
-    } catch (logError) {
-      console.error('Error logging user activity:', logError);
-      // Continue despite logging error
-    }
+    await logUserActivity('registered', user.id, `New user registration: ${user.name}`);
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -58,7 +42,7 @@ async function register(req, res) {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error during registration: ' + error.message });
+    res.status(500).json({ message: 'Server error during registration' });
   }
 }
 
@@ -71,83 +55,16 @@ async function login(req, res) {
     }
 
     const { email, password } = req.body;
-    console.log('Login attempt for email:', email);
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    // Try to find the user
-    let user;
-    try {
-      user = await User.findByEmail(email);
-    } catch (error) {
-      console.error('Error finding user:', error);
-      return res.status(500).json({ message: 'Error finding user account' });
-    }
-    
+    // Find user by email
+    const user = await User.findByEmail(email);
     if (!user) {
-      console.log('No user found for email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    console.log('User found:', { id: user.id, email: user.email, hasPassword: !!user.password, role: user.role });
-
-    // Recovery for admin accounts with missing passwords
-    if (!user.password && user.role === 'admin') {
-      console.log('Admin account found with missing password. Auto-recovering...');
-      
-      // Default admin passwords
-      const adminPasswords = {
-        'kenny@gmail.com': '12345678',
-        'shekky@gmail.com': '12345678',
-        'lonny@gmail.com': '123456789',
-        'default': '12345678' // fallback password
-      };
-      
-      // Get default password for this admin or use fallback
-      const defaultPassword = adminPasswords[email] || adminPasswords.default;
-      
-      // Set new password for admin
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-      await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, user.id]);
-      
-      console.log('Admin account recovered with default password');
-      
-      // Now the user has a password, continue with login
-      user.password = hashedPassword;
-    }
-
-    // Regular account with missing password - can't auto-fix
-    if (!user.password) {
-      console.log('Account has no password and is not an admin:', email);
-      return res.status(400).json({ message: 'Account setup incomplete. Please contact support.' });
-    }
-
-    // Compare password directly with bcrypt (simplifying)
-    let isPasswordValid = false;
-    try {
-      isPasswordValid = await bcrypt.compare(password, user.password);
-    } catch (error) {
-      console.error('Password comparison error:', error);
-      
-      // Special handling for admin accounts only
-      if (user.role === 'admin') {
-        console.log('Attempting to recover admin account after password error');
-        
-        // Admin account recovery
-        const adminPassword = email === 'lonny@gmail.com' ? '123456789' : '12345678';
-        const hashedPassword = await bcrypt.hash(adminPassword, 10);
-        
-        await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, user.id]);
-        
-        // Try comparing with new password
-        isPasswordValid = await bcrypt.compare(password, hashedPassword);
-      }
-    }
-    
+    // Verify password
+    const isPasswordValid = await User.comparePassword(password, user.password);
     if (!isPasswordValid) {
-      console.log('Invalid password for user:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -158,17 +75,12 @@ async function login(req, res) {
         email: user.email,
         role: user.role 
       },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRATION }
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRATION }
     );
-    
-    // Log the successful login activity
-    try {
-      await logUserActivity('login', user.id, `User login: ${user.email}`);
-    } catch (logError) {
-      console.error('Error logging user activity:', logError);
-      // Continue despite logging error
-    }
+
+    // Log the login
+    await logUserActivity('logged_in', user.id, `User logged in: ${user.email}`);
 
     res.json({
       message: 'Login successful',
@@ -182,7 +94,7 @@ async function login(req, res) {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login: ' + error.message });
+    res.status(500).json({ message: 'Server error during login' });
   }
 }
 
@@ -217,12 +129,7 @@ async function createStaffUser(req, res) {
     const user = await User.findById(result.id);
 
     // Log staff user creation
-    try {
-      await logUserActivity('created', user.id, `Staff user created: ${user.name} (${role})`);
-    } catch (logError) {
-      console.error('Error logging user activity:', logError);
-      // Continue despite logging error
-    }
+    await logUserActivity('created', user.id, `Staff user created: ${user.name} (${role})`);
 
     res.status(201).json({
       message: 'Staff user created successfully',

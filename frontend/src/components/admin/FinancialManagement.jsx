@@ -8,8 +8,10 @@ import {
   CreditCard,
   Tag,
   Users,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '../../api/config';
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -26,6 +28,10 @@ export default function FinancialManagement() {
     avgTransactionValue: 2038,
     pendingPayments: 12,
   });
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTimeframe, setReportTimeframe] = useState('month');
+  const [reportFormat, setReportFormat] = useState('all');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Simulated data - replace with actual API calls
   useEffect(() => {
@@ -53,8 +59,38 @@ export default function FinancialManagement() {
   }, []);
 
   const generateReport = () => {
-    // Simulated report generation - replace with actual API call
-    toast.success('Report generated successfully');
+    setShowReportModal(true);
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setIsGenerating(true);
+      // Generate a unique filename for the download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `Financial_Report_${reportTimeframe}_${timestamp}.xlsx`;
+      
+      // Call the API to generate the report
+      const response = await api.get(`/payments/report?timeframe=${reportTimeframe}&type=${reportFormat}`, {
+        responseType: 'blob' // Important for handling file downloads
+      });
+      
+      // Create a download link for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Report generated and downloaded successfully');
+      setShowReportModal(false);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const downloadReport = () => {
@@ -226,6 +262,79 @@ export default function FinancialManagement() {
           </table>
         </div>
       </div>
+
+      {/* Report Generation Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Generate Financial Report</h3>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Report Timeframe
+                </label>
+                <select
+                  value={reportTimeframe}
+                  onChange={(e) => setReportTimeframe(e.target.value)}
+                  className="w-full input"
+                >
+                  <option value="week">Current Week</option>
+                  <option value="month">Current Month</option>
+                  <option value="half_year">Last 6 Months</option>
+                  <option value="year">Last 12 Months</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Report Content
+                </label>
+                <select
+                  value={reportFormat}
+                  onChange={(e) => setReportFormat(e.target.value)}
+                  className="w-full input"
+                >
+                  <option value="all">Comprehensive Report (All Data)</option>
+                  <option value="payments">Payments Only</option>
+                  <option value="services">Services Only</option>
+                </select>
+              </div>
+              
+              <p className="text-sm text-gray-500">
+                The report will include a summary sheet and detailed data based on your selection.
+                It will be downloaded as an Excel file.
+              </p>
+            </div>
+            
+            <div className="mt-5 sm:mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowReportModal(false)}
+                type="button"
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGenerateReport}
+                disabled={isGenerating}
+                type="button"
+                className="btn-primary"
+              >
+                {isGenerating ? 'Generating...' : 'Generate & Download'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

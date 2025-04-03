@@ -288,14 +288,18 @@ router.post('/',
         [result.lastID]
       );
 
-      // Log document upload
-      await logDocumentActivity('uploaded', document.id, req.user.id, 
-        `Document uploaded: ${document.name} (${document_type})${booking_id ? ` for booking #${booking_id}` : ''}`
-      );
+      // Log document upload - only if document was retrieved successfully
+      if (document && document.id) {
+        await logDocumentActivity('uploaded', document.id, req.user.id, 
+          `Document uploaded: ${document.name} (${document_type})${booking_id ? ` for booking #${booking_id}` : ''}`
+        );
+      } else {
+        console.warn(`Document was uploaded but couldn't be retrieved with ID: ${result.lastID}`);
+      }
 
       res.status(201).json({
         message: 'Document uploaded successfully',
-        document
+        document: document || { id: result.lastID, name: req.file.originalname, file_path: file_path }
       });
     } catch (error) {
       console.error('Document upload error:', error);
@@ -387,26 +391,6 @@ router.delete('/:id',
       await logDocumentActivity('deleted', document.id, req.user.id, `Document deleted: ${document.name}`);
 
       res.json({ message: 'Document deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-);
-
-// Admin: Get all documents
-router.get('/admin/all',
-  authenticateToken,
-  authorizeRoles('admin'),
-  async (req, res) => {
-    try {
-      const documents = await db.all(`
-        SELECT d.*, u.name as uploaded_by_name 
-        FROM documents d
-        LEFT JOIN users u ON d.uploaded_by = u.id
-        ORDER BY d.created_at DESC
-      `);
-
-      res.json({ documents });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
