@@ -44,7 +44,7 @@ export default function Payments() {
 
   const handleMpesaPayment = async () => {
     if (!mpesaPhone.match(/^(?:254|\+254|0)?(7\d{8})$/)) {
-      toast.error('Please enter a valid Safaricom phone number');
+      toast.info('Please enter a valid Safaricom phone number, but be aware this service is not fully implemented yet');
       return;
     }
 
