@@ -167,6 +167,14 @@ router.post('/',
     try {
       const { deceased_id, services, notes } = req.body;
       let totalAmount = 0;
+      
+      // First verify that the deceased_id is valid
+      const deceased = await db.get('SELECT id FROM deceased WHERE id = ?', [deceased_id]);
+      if (!deceased) {
+        return res.status(404).json({ 
+          message: `Deceased record with ID ${deceased_id} not found. Please create a valid deceased record first.`
+        });
+      }
 
       // Calculate total amount and verify services
       for (const service of services) {
