@@ -99,7 +99,7 @@ const tokenMiddleWare = async (req, res, next) => {
     };
 
     const response = await axios.get(url, { headers });
-    console.log(response)
+    console.log("this is the reponse from the initial token request:",response)
     req.MPESA_AUTHTOKEN = response.data.access_token;
     console.log(req.MPESA_AUTHTOKEN);
     console.log("Token generated successfully.");
