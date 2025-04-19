@@ -91,7 +91,8 @@ const tokenMiddleWare = async (req, res, next) => {
   try {
     const encodedCredentials = Buffer.from(
       consumerKey + ":" + consumerSecret
-    ).toString("base64");    
+    ).toString("base64");  
+    
     const headers = {
       Authorization: `Basic ${encodedCredentials}`,
       "Content-Type": "application/json",
@@ -102,7 +103,8 @@ const tokenMiddleWare = async (req, res, next) => {
     console.log(req.MPESA_AUTHTOKEN);
     console.log("Token generated successfully.");
     next();
-  } catch (error) {
+  } 
+  catch (error) {
     console.log(error);
     throw new Error("Failed to get access token.");
   }
