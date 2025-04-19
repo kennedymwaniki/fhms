@@ -40,16 +40,12 @@ export default function Payments() {
     } finally {
       setLoading(false);
     }
-  };
+  };  
   const handleMpesaPayment = async () => {
-    if (!mpesaPhone.match(/^(?:254|\+254|0)?(7\d{8})$/)) {
-      toast.info('Please enter a valid Safaricom phone number');
-      return;
-    }
-
     setProcessingPayment(true);
     try {
-      const formattedPhone = mpesaPhone.replace(/^(?:254|\+254|0)?(\d{9})$/, '254$1');
+      // Let the backend handle phone number validation
+      const formattedPhone = mpesaPhone;
       const response = await paymentsService.initiateMpesa({
         phone: formattedPhone,
         amount: selectedBooking.total_amount,
