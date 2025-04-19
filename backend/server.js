@@ -91,15 +91,15 @@ const tokenMiddleWare = async (req, res, next) => {
   try {
     const encodedCredentials = Buffer.from(
       consumerKey + ":" + consumerSecret
-    ).toString("base64");  
-    
+    ).toString("base64");
+
     const headers = {
-      Authorization: `Basic ${encodedCredentials}`,
+      Authorization: "Basic" + " " + encodedCredentials,
       "Content-Type": "application/json",
     };
 
     const response = await axios.get(url, { headers });
-    console.log("this is the reponse from the initial token request:",response)
+    console.log("this is the reponse from the initial token request:",response.data)
     req.MPESA_AUTHTOKEN = response.data.access_token;
     console.log(req.MPESA_AUTHTOKEN);
     console.log("Token generated successfully.");
