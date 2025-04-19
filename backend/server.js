@@ -142,7 +142,7 @@ app.post("/api/stk-push", tokenMiddleWare, async (req, res) => {
         PartyA: formattedPhone,
         PartyB: process.env.MPESA_SHORTCODE, //till number for tills
         PhoneNumber: formattedPhone,
-        CallBackURL: "https://mydomain.com/callback-url-path",
+        CallBackURL: "https://fhms.onrender.com/api/callback-url-path",
         AccountReference: formattedPhone,
         TransactionDesc: "anything here",
       },
@@ -205,7 +205,7 @@ app.post("/api/stk-push-query", tokenMiddleWare, async (req, res) => {
 });
 
 // callback
-app.post("/callback-url-path", (req, res) => {
+app.post("/api/callback-url-path", (req, res) => {
   // handle the callback from safaricom here
   console.log("Callback received:", req.body);
   res.status(200).send("Callback received successfully");
