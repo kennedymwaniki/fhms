@@ -245,20 +245,36 @@ router.post('/',
 
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
-      }
-
-      const { document_type, description, booking_id, deceased_id } = req.body;
+      }      const { document_type, description, booking_id, deceased_id } = req.body;
       
       if (!document_type) {
         return res.status(400).json({ message: 'Document type is required' });
       }
 
       const file_path = req.file.filename;
+      
+      // Verify user exists (for uploaded_by foreign key)
+      const user = await db.get('SELECT id FROM users WHERE id = ?', [req.user.id]);
+      if (!user) {
+        return res.status(400).json({ message: 'User not found, please log in again' });
+      }
 
-      // If booking_id is provided, verify access
+      // If deceased_id is provided, verify it exists
+      if (deceased_id) {
+        const deceased = await db.get('SELECT id FROM deceased WHERE id = ?', [deceased_id]);
+        if (!deceased) {
+          return res.status(400).json({ message: 'Deceased record not found' });
+        }
+      }
+
+      // If booking_id is provided, verify it exists and check access
       if (booking_id) {
-        const booking = await db.get('SELECT user_id FROM bookings WHERE id = ?', [booking_id]);
-        if (!booking || (req.user.role !== 'admin' && booking.user_id !== req.user.id)) {
+        const booking = await db.get('SELECT id, user_id FROM bookings WHERE id = ?', [booking_id]);
+        if (!booking) {
+          return res.status(400).json({ message: 'Booking not found' });
+        }
+        
+        if (req.user.role !== 'admin' && booking.user_id !== req.user.id) {
           return res.status(403).json({ message: 'Not authorized to add document to this booking' });
         }
       }

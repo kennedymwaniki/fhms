@@ -167,8 +167,7 @@ router.post('/',
     try {
       const { deceased_id, services, notes } = req.body;
       let totalAmount = 0;
-      
-      // First verify that the deceased_id is valid
+        // First verify that the deceased_id is valid
       const deceased = await db.get('SELECT id FROM deceased WHERE id = ?', [deceased_id]);
       if (!deceased) {
         return res.status(404).json({ 
@@ -188,14 +187,22 @@ router.post('/',
           });
         }
         totalAmount += serviceData.price * service.quantity;
+      }      
+      
+      // Verify user exists (for user_id foreign key)
+      const user = await db.get('SELECT id FROM users WHERE id = ?', [req.user.id]);
+      if (!user) {
+        return res.status(400).json({ message: 'User not found, please log in again' });
       }
+
+      // We've already verified deceased exists above, no need to check again
 
       // Create booking
       const result = await db.run(
         `INSERT INTO bookings 
          (user_id, deceased_id, status, total_amount, payment_status, notes)
          VALUES (?, ?, 'pending', ?, 'pending', ?)`,
-        [req.user.id, deceased_id, totalAmount, notes]
+        [req.user.id, deceased_id, totalAmount, notes || null]
       );
 
       // Add booking services
