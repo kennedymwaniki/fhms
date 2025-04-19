@@ -15,13 +15,11 @@ const paymentsService = {
     const response = await api.post('/payments/initiate', paymentData);
     return response.data;
   },
-
   // Initiate M-Pesa STK Push
   initiateMpesa: async (data) => {
-    const response = await api.post('/payments/mpesa/initiate', {
-      phone: data.phone,
-      amount: data.amount,
-      booking_id: data.bookingId
+    const response = await api.post('/stk-push', {
+      phoneNumber: data.phone,
+      amount: data.amount
     });
     return response.data;
   },

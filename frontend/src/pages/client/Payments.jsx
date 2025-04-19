@@ -41,52 +41,67 @@ export default function Payments() {
       setLoading(false);
     }
   };
-
   const handleMpesaPayment = async () => {
     if (!mpesaPhone.match(/^(?:254|\+254|0)?(7\d{8})$/)) {
-      toast.info('Please enter a valid Safaricom phone number, but be aware this service is not fully implemented yet');
+      toast.info('Please enter a valid Safaricom phone number');
       return;
     }
 
     setProcessingPayment(true);
     try {
+      const formattedPhone = mpesaPhone.replace(/^(?:254|\+254|0)?(\d{9})$/, '254$1');
       const response = await paymentsService.initiateMpesa({
-        phone: mpesaPhone.replace(/^(?:254|\+254|0)?(\d{9})$/, '254$1'),
+        phone: formattedPhone,
         amount: selectedBooking.total_amount,
         bookingId: selectedBooking.id
       });
 
-      toast.success('Please check your phone for the M-Pesa prompt');
-      
-      // Start polling for payment status
-      let attempts = 0;
-      const maxAttempts = 10;
-      const pollInterval = setInterval(async () => {
-        attempts++;
-        try {
-          const result = await paymentsService.verifyMpesaPayment(response.transactionId);
-          if (result.status === 'completed') {
-            clearInterval(pollInterval);
-            toast.success('Payment completed successfully');
-            setShowMpesaDialog(false);
-            loadPayments();
-            loadPendingPayments();
-          } else if (attempts >= maxAttempts) {
-            clearInterval(pollInterval);
-            toast.error('Payment verification timeout. Please check your payment status later');
+      // Check if STK push was successful based on response code
+      if (response.data && response.data.ResponseCode === "0") {
+        // Show processing dialog with spinner for user to enter PIN
+        toast.success('STK push sent! Please check your phone and enter your M-PESA PIN');
+        
+        // Keep the modal open with a spinner to indicate processing
+        // The user should be entering their PIN on their phone during this time
+        
+        // Start polling for payment status using the CheckoutRequestID
+        const checkoutRequestId = response.data.CheckoutRequestID;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            // Query the STK push status 
+            const result = await paymentsService.verifyMpesaPayment(checkoutRequestId);
+            
+            if (result && result.data && result.data.ResultCode === "0") {
+              clearInterval(pollInterval);
+              toast.success('Payment completed successfully');
+              setShowMpesaDialog(false);
+              loadPayments();
+              loadPendingPayments();
+            } else if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              setProcessingPayment(false);
+              toast.error('Payment verification timeout. Please check your payment status later');
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              setProcessingPayment(false);
+              toast.error('Failed to verify payment. Please contact support if payment was deducted');
+            }
           }
-        } catch (error) {
-          console.error('Payment verification error:', error);
-          if (attempts >= maxAttempts) {
-            clearInterval(pollInterval);
-            toast.error('Failed to verify payment. Please contact support if payment was deducted');
-          }
-        }
-      }, 5000);
+        }, 5000);
+      } else {
+        setProcessingPayment(false);
+        toast.error('Failed to initiate M-Pesa payment. Please try again.');
+      }
     } catch (error) {
       console.error('M-Pesa payment error:', error);
       toast.error('Failed to initiate M-Pesa payment');
-    } finally {
       setProcessingPayment(false);
     }
   };
