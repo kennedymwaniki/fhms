@@ -112,7 +112,7 @@ const tokenMiddleWare = async (req, res, next) => {
 
 // stk push endpoint
 app.post("/api/stk-push", tokenMiddleWare, async (req, res) => {
-  // token is needed
+  
   const { phoneNumber, amount } = req.body;
   const token = req.MPESA_AUTHTOKEN;
 
