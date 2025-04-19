@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const axios = require('axios');
 
 // Import routes
 const authRoutes = require('./src/routes/auth.routes');
