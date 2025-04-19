@@ -91,10 +91,9 @@ const tokenMiddleWare = async (req, res, next) => {
   try {
     const encodedCredentials = Buffer.from(
       consumerKey + ":" + consumerSecret
-    ).toString("base64");
-
+    ).toString("base64");    
     const headers = {
-      Authorization: "Basic" + " " + encodedCredentials,
+      Authorization: `Basic ${encodedCredentials}`,
       "Content-Type": "application/json",
     };
 
